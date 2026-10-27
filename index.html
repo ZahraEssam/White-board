@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>سبورة بيضاء</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background: #eef1f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* الشريط العلوي */
+  header {
+    background: #ffffff;
+    border-bottom: 1px solid #d8dee6;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 16px;
+    color: #334;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  .group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: #f6f8fa;
+    border: 1px solid #e1e6ec;
+    border-radius: 8px;
+  }
+  .group label { font-size: 12px; color: #667; }
+
+  button.tool {
+    width: 34px; height: 34px;
+    border: 1px solid #d8dee6;
+    background: #fff;
+    border-radius: 7px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    padding: 0;
+  }
+  button.tool:hover { background: #f0f4f8; }
+  button.tool.active {
+    background: #2b6cff;
+    border-color: #2b6cff;
+    color: #fff;
+  }
+  button.tool svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .swatch {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.active { border-color: #334; box-shadow: 0 0 0 2px #fff inset; }
+
+  input[type=range] { width: 90px; accent-color: #2b6cff; }
+  .size-val { font-size: 12px; color: #667; width: 22px; text-align: center; }
+
+  /* منطقة العمل */
+  .workspace {
+    flex: 1;
+    display: flex;
+    gap: 14px;
+    padding: 14px;
+    overflow: hidden;
+  }
+
+  .board-wrap {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(20,30,50,0.08), 0 1px 3px rgba(20,30,50,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  /* لوحة الأشكال */
+  .shapes {
+    width: 160px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(20,30,50,0.08), 0 1px 3px rgba(20,30,50,0.06);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+  }
+  .shapes h2 {
+    font-size: 12px;
+    color: #8892a0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin: 4px 2px 2px;
+  }
+  .shape-btn {
+    width: 100%;
+    aspect-ratio: 1.4/1;
+    border: 1px solid #e1e6ec;
+    background: #fafbfc;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    padding: 6px;
+  }
+  .shape-btn:hover { background: #eef4ff; border-color: #b9d0ff; }
+  .shape-btn.active { background: #e8f0ff; border-color: #2b6cff; }
+  .shape-btn svg { width: 100%; height: 100%; stroke: #445; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .shape-btn.active svg { stroke: #2b6cff; }
+
+  .divider { height: 1px; background: #eef1f5; margin: 4px 0; }
+
+  /* رسالة مساعدة */
+  .hint {
+    position: absolute;
+    bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(40,50,70,0.85);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <!-- أدوات الرسم -->
+  <div class="group">
+    <button class="tool active" id="toolPen" title="قلم">
+      <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+    </button>
+    <button class="tool" id="toolEraser" title="ممحاة">
+      <svg viewBox="0 0 24 24"><path d="M20 20H7L3 16a2 2 0 0 1 0-2.8l9-9a2 2 0 0 1 2.8 0l5.2 5.2a2 2 0 0 1 0 2.8L11 20"/><path d="M9 13l6 6"/></svg>
+    </button>
+  </div>
+
+  <!-- الألوان -->
+  <div class="group" id="colors">
+    <button class="swatch active" data-color="#1f2937" style="background:#1f2937" title="أسود"></button>
+    <button class="swatch" data-color="#2b6cff" style="background:#2b6cff" title="أزرق"></button>
+    <button class="swatch" data-color="#e5484d" style="background:#e5484d" title="أحمر"></button>
+    <button class="swatch" data-color="#2fa84f" style="background:#2fa84f" title="أخضر"></button>
+    <button class="swatch" data-color="#f5a623" style="background:#f5a623" title="برتقالي"></button>
+    <button class="swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="بنفسجي"></button>
+  </div>
+
+  <!-- الحجم -->
+  <div class="group">
+    <label>الحجم</label>
+    <input type="range" id="sizeRange" min="1" max="30" value="3" />
+    <span class="size-val" id="sizeVal">3</span>
+  </div>
+
+  <!-- مسح -->
+  <div class="group">
+    <button class="tool" id="btnUndo" title="تراجع">
+      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+    </button>
+    <button class="tool" id="btnClear" title="مسح الكل">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+  </div>
+
+  <h1>سبورة بيضاء</h1>
+</header>
+
+<div class="workspace">
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <aside class="shapes">
+    <h2>أشكال</h2>
+    <button class="shape-btn" data-shape="line" title="خط">
+      <svg viewBox="0 0 40 28"><line x1="6" y1="22" x2="34" y2="6"/></svg>
+    </button>
+    <button class="shape-btn" data-shape="arrow" title="سهم">
+      <svg viewBox="0 0 40 28"><line x1="6" y1="22" x2="34" y2="6"/><polyline points="26,6 34,6 34,14"/></svg>
+    </button>
+    <button class="shape-btn" data-shape="rect" title="مستطيل">
+      <svg viewBox="0 0 40 28"><rect x="6" y="6" width="28" height="16" rx="2"/></svg>
+    </button>
+    <button class="shape-btn" data-shape="circle" title="دائرة">
+      <svg viewBox="0 0 40 28"><circle cx="20" cy="14" r="10"/></svg>
+    </button>
+    <button class="shape-btn" data-shape="triangle" title="مثلث">
+      <svg viewBox="0 0 40 28"><polygon points="20,5 34,23 6,23"/></svg>
+    </button>
+
+    <div class="divider"></div>
+    <h2>كتابة</h2>
+    <button class="shape-btn" data-shape="text" title="إضافة نص">
+      <svg viewBox="0 0 40 28"><path d="M8 8V5h24v3"/><line x1="20" y1="5" x2="20" y2="23"/><line x1="14" y1="23" x2="26" y2="23"/></svg>
+    </button>
+
+    <div class="divider"></div>
+    <h2>خيارات</h2>
+    <button class="shape-btn" data-shape="fill" title="تعبئة الأشكال">
+      <svg viewBox="0 0 40 28"><rect x="6" y="6" width="28" height="16" rx="2" fill="#2b6cff" stroke="#2b6cff"/></svg>
+    </button>
+  </aside>
+</div>
+
+<script>
+/* ============================================================
+   الإعدادات الأساسية
+   ============================================================ */
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const hint = document.getElementById('hint');
+
+let dpr = window.devicePixelRatio || 1;
+
+// حالة التطبيق
+const app = {
+  tool: 'pen',            // pen | eraser | shape
+  shape: null,            // line | arrow | rect | circle | triangle | text
+  color: '#1f2937',
+  size: 3,
+  fill: false,
+  drawing: false,
+  startX: 0, startY: 0,
+  lastX: 0, lastY: 0,
+  snapshot: null,         // صورة مؤقتة أثناء رسم الشكل
+  history: [],            // لتراجع
+  textInput: null
+};
+
+/* ============================================================
+   ضبط حجم الكانفس مع الحفاظ على المحتوى
+   ============================================================ */
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+
+  // احفظ المحتوى الحالي
+  const prev = document.createElement('canvas');
+  prev.width = canvas.width;
+  prev.height = canvas.height;
+  if (canvas.width && canvas.height) {
+    prev.getContext('2d').drawImage(canvas, 0, 0);
+  }
+
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // أعِد رسم المحتوى
+  if (prev.width && prev.height) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+/* ============================================================
+   أدوات
+   ============================================================ */
+function setTool(tool, shape) {
+  app.tool = tool;
+  app.shape = shape || null;
+
+  document.querySelectorAll('#toolPen, #toolEraser').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+
+  if (tool === 'pen') document.getElementById('toolPen').classList.add('active');
+  if (tool === 'eraser') document.getElementById('toolEraser').classList.add('active');
+  if (tool === 'shape' && shape) {
+    const btn = document.querySelector(`.shape-btn[data-shape="${shape}"]`);
+    if (btn) btn.classList.add('active');
+  }
+
+  canvas.style.cursor = tool === 'eraser' ? 'cell' : (tool === 'shape' ? 'crosshair' : 'crosshair');
+}
+
+/* ============================================================
+   حفظ/استرجاع الحالة (للتراجع)
+   ============================================================ */
+function pushHistory() {
+  app.history.push(canvas.toDataURL());
+  if (app.history.length > 25) app.history.shift();
+}
+function undo() {
+  if (!app.history.length) return;
+  const data = app.history.pop();
+  const img = new Image();
+  img.onload = () => {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  };
+  img.src = data;
+}
+
+/* ============================================================
+   إحداثيات المؤشر داخل الكانفس
+   ============================================================ */
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const p = e.touches ? e.touches[0] : e;
+  return {
+    x: p.clientX - r.left,
+    y: p.clientY - r.top
+  };
+}
+
+/* ============================================================
+   رسم الأشكال
+   ============================================================ */
+function drawShapePreview(x1, y1, x2, y2) {
+  // استرجع اللقطة السابقة ثم ارسم الشكل الجديد
+  if (app.snapshot) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(app.snapshot, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.strokeStyle = app.color;
+  ctx.fillStyle = app.color;
+  ctx.lineWidth = app.size;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  switch (app.shape) {
+    case 'line':
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      break;
+    case 'arrow': {
+      drawArrow(x1, y1, x2, y2);
+      break;
+    }
+    case 'rect': {
+      const w = x2 - x1, h = y2 - y1;
+      ctx.beginPath();
+      ctx.rect(x1, y1, w, h);
+      if (app.fill) { ctx.fillStyle = hexA(app.color, 0.15); ctx.fill(); }
+      ctx.stroke();
+      break;
+    }
+    case 'circle': {
+      const rx = Math.abs(x2 - x1) / 2;
+      const ry = Math.abs(y2 - y1) / 2;
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      if (app.fill) { ctx.fillStyle = hexA(app.color, 0.15); ctx.fill(); }
+      ctx.stroke();
+      break;
+    }
+    case 'triangle': {
+      ctx.beginPath();
+      ctx.moveTo((x1 + x2) / 2, y1);
+      ctx.lineTo(x2, y2);
+      ctx.lineTo(x1, y2);
+      ctx.closePath();
+      if (app.fill) { ctx.fillStyle = hexA(app.color, 0.15); ctx.fill(); }
+      ctx.stroke();
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+function drawArrow(x1, y1, x2, y2) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLen = Math.max(10, app.size * 4);
+  const a1 = angle - Math.PI / 7;
+  const a2 = angle + Math.PI / 7;
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(a1), y2 - headLen * Math.sin(a1));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(a2), y2 - headLen * Math.sin(a2));
+  ctx.stroke();
+}
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ============================================================
+   الأحداث على الكانفس
+   ============================================================ */
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+
+  // أداة الكتابة
+  if (app.tool === 'shape' && app.shape === 'text') {
+    startTextInput(e);
+    return;
+  }
+
+  app.drawing = true;
+  const p = getPos(e);
+  app.startX = p.x; app.startY = p.y;
+  app.lastX = p.x;  app.lastY = p.y;
+
+  pushHistory();
+
+  if (app.tool === 'pen' || app.tool === 'eraser') {
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + 0.01, p.y + 0.01);
+    ctx.strokeStyle = app.tool === 'eraser' ? '#ffffff' : app.color;
+    ctx.lineWidth = app.tool === 'eraser' ? Math.max(10, app.size * 4) : app.size;
+    ctx.stroke();
+    ctx.restore();
+  } else if (app.tool === 'shape') {
+    // خذ لقطة للخلفية
+    app.snapshot = document.createElement('canvas');
+    app.snapshot.width = canvas.width;
+    app.snapshot.height = canvas.height;
+    app.snapshot.getContext('2d').drawImage(canvas, 0, 0);
+  }
+
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!app.drawing) return;
+  const p = getPos(e);
+
+  if (app.tool === 'pen' || app.tool === 'eraser') {
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(app.lastX, app.lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = app.tool === 'eraser' ? '#ffffff' : app.color;
+    ctx.lineWidth = app.tool === 'eraser' ? Math.max(10, app.size * 4) : app.size;
+    ctx.stroke();
+    ctx.restore();
+    app.lastX = p.x; app.lastY = p.y;
+  } else if (app.tool === 'shape') {
+    drawShapePreview(app.startX, app.startY, p.x, p.y);
+  }
+});
+
+function endStroke(e) {
+  if (!app.drawing) return;
+  app.drawing = false;
+  if (app.tool === 'shape') {
+    const p = getPos(e);
+    drawShapePreview(app.startX, app.startY, p.x, p.y);
+    app.snapshot = null;
+  }
+}
+canvas.addEventListener('pointerup', endStroke);
+canvas.addEventListener('pointercancel', endStroke);
+canvas.addEventListener('pointerleave', e => { if (app.drawing) endStroke(e); });
+
+/* ============================================================
+   إدخال النص
+   ============================================================ */
+function startTextInput(e) {
+  if (app.textInput) app.textInput.remove();
+
+  const p = getPos(e);
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.placeholder = 'اكتب هنا...';
+  inp.style.cssText = `
+    position: absolute;
+    left: ${p.x}px;
+    top: ${p.y}px;
+    font: ${Math.max(16, app.size * 6)}px "Segoe UI", sans-serif;
+    color: ${app.color};
+    background: rgba(255,255,255,0.9);
+    border: 1px dashed #2b6cff;
+    border-radius: 4px;
+    padding: 2px 6px;
+    outline: none;
+    direction: rtl;
+    min-width: 120px;
+    z-index: 5;
+  `;
+  canvas.parentElement.appendChild(inp);
+  inp.focus();
+  app.textInput = inp;
+
+  const commit = () => {
+    const txt = inp.value.trim();
+    if (txt) {
+      pushHistory();
+      ctx.save();
+      ctx.fillStyle = app.color;
+      ctx.font = `${Math.max(16, app.size * 6)}px "Segoe UI", sans-serif`;
+      ctx.textBaseline = 'top';
+      ctx.direction = 'rtl';
+      ctx.fillText(txt, p.x + 4, p.y + 4);
+      ctx.restore();
+    }
+    inp.remove();
+    app.textInput = null;
+  };
+
+  inp.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+    if (ev.key === 'Escape') { inp.remove(); app.textInput = null; }
+  });
+  inp.addEventListener('blur', commit);
+}
+
+/* ============================================================
+   ربط الأدوات
+   ============================================================ */
+document.getElementById('toolPen').addEventListener('click', () => setTool('pen'));
+document.getElementById('toolEraser').addEventListener('click', () => setTool('eraser'));
+
+document.querySelectorAll('.shape-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const shape = btn.dataset.shape;
+    if (shape === 'fill') {
+      app.fill = !app.fill;
+      btn.classList.toggle('active', app.fill);
+      showHint(app.fill ? 'تعبئة الأشكال: مفعلة' : 'تعبئة الأشكال: متوقفة');
+      return;
+    }
+    setTool('shape', shape);
+  });
+});
+
+/* الألوان */
+document.querySelectorAll('.swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    app.color = sw.dataset.color;
+  });
+});
+
+/* الحجم */
+const sizeRange = document.getElementById('sizeRange');
+const sizeVal = document.getElementById('sizeVal');
+sizeRange.addEventListener('input', () => {
+  app.size = +sizeRange.value;
+  sizeVal.textContent = sizeRange.value;
+});
+
+/* تراجع ومسح */
+document.getElementById('btnUndo').addEventListener('click', undo);
+document.getElementById('btnClear').addEventListener('click', () => {
+  if (!confirm('مسح كل محتوى السبورة؟')) return;
+  pushHistory();
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  showHint('تم مسح السبورة');
+});
+
+/* اختصارات لوحة المفاتيح */
+window.addEventListener('keydown', e => {
+  if (app.textInput) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  if (e.key === 'p' || e.key === 'P') setTool('pen');
+  if (e.key === 'e' || e.key === 'E') setTool('eraser');
+});
+
+/* ============================================================
+   تلميح صغير
+   ============================================================ */
+let hintTimer = null;
+function showHint(msg) {
+  hint.textContent = msg;
+  hint.classList.add('show');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => hint.classList.remove('show'), 1600);
+}
+
+/* التهيئة */
+setTool('pen');
+</script>
+</body>
+</html>
